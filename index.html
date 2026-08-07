@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniOCR — Hybrid Document Text Router</title>
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- CSS Styling -->
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="glow-bg"></div>
+  
+  <div class="app-container">
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon"><i data-lucide="cpu"></i></div>
+        <div>
+          <h1>OmniOCR</h1>
+          <p class="subtitle">Hybrid Document & Text Router</p>
+        </div>
+      </div>
+      <div class="status-indicator">
+        <span class="pulse-dot"></span>
+        <span class="status-text">Connected to Edge Runtime</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- Left Sidebar: Configurations & Dropzone -->
+      <section class="control-panel">
+        <div class="card settings-card">
+          <h2><i data-lucide="sliders"></i> Settings</h2>
+          <div class="form-group">
+            <label for="endpoint-url">Edge Function Endpoint</label>
+            <input type="text" id="endpoint-url" value="http://localhost:54330" placeholder="http://localhost:54330">
+          </div>
+          <div class="form-group">
+            <label for="ocr-langs">EasyOCR Languages</label>
+            <input type="text" id="ocr-langs" value="en" placeholder="e.g., en,es,fr">
+            <small class="help-text">Comma-separated list of OCR language codes</small>
+          </div>
+          <div class="form-group">
+            <label for="access-key">EasyOCR Access Key</label>
+            <input type="password" id="access-key" value="" placeholder="Enter your EasyOCR Access Key">
+            <small class="help-text">From console.easyocr.org or configure in .env</small>
+          </div>
+        </div>
+
+        <div class="card upload-card">
+          <div id="dropzone" class="dropzone">
+            <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg" style="display: none;">
+            <div class="dropzone-content">
+              <div class="upload-icon"><i data-lucide="cloud-upload"></i></div>
+              <h3>Drag & drop documents here</h3>
+              <p>Supports PDFs, PNGs, and JPEGs</p>
+              <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">Browse Files</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card files-card">
+          <div class="files-header">
+            <h2><i data-lucide="folder-open"></i> Queue</h2>
+            <button class="btn-clear" id="clear-queue-btn" title="Clear all files"><i data-lucide="trash-2"></i></button>
+          </div>
+          <div class="files-list" id="files-list">
+            <!-- Dynamic elements will be inserted here -->
+            <div class="empty-state">
+              <i data-lucide="info"></i>
+              <p>No files uploaded yet</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Text Viewer & Metadata -->
+      <section class="viewer-panel">
+        <div class="card result-card" id="result-card">
+          <div class="result-placeholder" id="result-placeholder">
+            <i data-lucide="file-text" class="placeholder-icon"></i>
+            <h2>Select a processed file to view text</h2>
+            <p>Upload files or select an already processed item from the queue list to inspect the extracted content.</p>
+          </div>
+
+          <div class="result-content hidden" id="result-content">
+            <div class="result-header">
+              <div class="file-details">
+                <span class="file-badge" id="file-type-badge">PDF</span>
+                <h2 id="result-filename">document.pdf</h2>
+              </div>
+              <div class="actions">
+                <button class="btn btn-primary" id="copy-btn"><i data-lucide="copy"></i> Copy Text</button>
+              </div>
+            </div>
+
+            <div class="metadata-grid">
+              <div class="meta-item">
+                <span class="meta-label">Extraction Source</span>
+                <span class="meta-value source-badge" id="meta-source">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">File Status</span>
+                <span class="meta-value" id="meta-status">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Characters Extracted</span>
+                <span class="meta-value" id="meta-char-count">-</span>
+              </div>
+              <div class="meta-item" id="meta-page-count-container">
+                <span class="meta-label">Total Pages</span>
+                <span class="meta-value" id="meta-page-count">-</span>
+              </div>
+            </div>
+
+            <div class="text-container">
+              <div class="text-header">
+                <h3>Extracted Text</h3>
+              </div>
+              <pre class="extracted-text" id="extracted-text-view"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Lucide Script init -->
+  <script>
+    lucide.createIcons();
+  </script>
+  <!-- App JS -->
+  <script src="app.js"></script>
+</body>
+</html>
