@@ -111,20 +111,27 @@ Deno.serve({ port }, async (req) => {
         );
       }
 
-      console.log("PDF text layer is empty or scanned. Falling back to OCR.space API...");
+      console.log("PDF text layer is empty or scanned. Falling back to online EasyOCR API...");
     } else {
-      console.log("File is an image. Forwarding to OCR.space API...");
+      console.log("File is an image. Forwarding to online EasyOCR API...");
     }
 
-    // 3. Forward to OCR.space API
     // 3. Forward to the online EasyOCR Console API
-    const targetUrl = "https://console.easyocr.org/api/ocr";
-    console.log(`Calling Online EasyOCR API: ${targetUrl}`);
+    const targetUrl = new URL("https://console.easyocr.org/api/ocr");
+    targetUrl.searchParams.set("langs", langs);
+
+    // Enforce 5MB limit on online EasyOCR API calls
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error(`File size (${(file.size / (1024 * 1024)).toFixed(2)}MB) exceeds the 5MB maximum limit supported by the online EasyOCR API.`);
+    }
+
+    console.log(`Calling Online EasyOCR API: ${targetUrl.toString()}`);
 
     const forwardData = new FormData();
     forwardData.append("file", file);
     
-    // Read key from header (if inputted in Web UI) or read from env variables (EASYOCR_ACCESS_KEY, OCR_SPACE_KEY, OCR_API_KEY)
+    const headers = new Headers();
+
     let clientAccessKey = req.headers.get("x-access-key") 
       || Deno.env.get("EASYOCR_ACCESS_KEY") 
       || Deno.env.get("OCR_SPACE_KEY") 
@@ -145,21 +152,40 @@ Deno.serve({ port }, async (req) => {
       throw new Error("Missing or invalid EasyOCR Access Key. Please check your .env file or input a valid key in the Web UI settings.");
     }
 
-    const headers = new Headers();
     headers.set("X-Access-Key", clientAccessKey);
 
-    const apiResponse = await fetch(targetUrl, {
-      method: "POST",
-      headers,
-      body: forwardData,
-    });
+    // Use AbortController to implement the recommended 30-second request timeout limit
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let apiResponse: Response;
+    try {
+      apiResponse = await fetch(targetUrl.toString(), {
+        method: "POST",
+        headers,
+        body: forwardData,
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        throw new Error("Downstream OCR request timed out. The EasyOCR service took longer than the recommended 30 seconds to respond.");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!apiResponse.ok) {
+      // Catch specific rate-limiting status code
+      if (apiResponse.status === 429) {
+        throw new Error("Too Many Requests. EasyOCR API usage quota has been exceeded (max 60 requests/minute, 1000/hour). Please try again later.");
+      }
+
       const errText = await apiResponse.text();
       let errorMsg = errText;
       try {
         const parsedErr = JSON.parse(errText);
-        errorMsg = parsedErr.message || parsedErr.error || errText;
+        errorMsg = parsedErr.message || parsedErr.error || parsedErr.detail || errText;
       } catch (_) {}
       throw new Error(`Online EasyOCR API returned status ${apiResponse.status}: ${errorMsg}`);
     }
@@ -167,7 +193,9 @@ Deno.serve({ port }, async (req) => {
     const ocrResult = await apiResponse.json();
     console.log("EasyOCR Console API raw response:", JSON.stringify(ocrResult));
 
+    // Online Console API returns words array
     const fullText = (ocrResult.words || []).map((w: any) => w.text).join(" ");
+    const pages = [{ page: 1, text: fullText }];
 
     return new Response(
       JSON.stringify({
@@ -175,7 +203,7 @@ Deno.serve({ port }, async (req) => {
         filename: fileName,
         is_editable: false,
         full_text: fullText,
-        pages: [{ page: 1, text: fullText }],
+        pages: pages,
         languages: [langs],
       }),
       {

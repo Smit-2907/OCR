@@ -800,3 +800,22 @@ body {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Responsive Styles */
+@media (max-width: 1024px) {
+  .app-container {
+    height: auto;
+    padding: 16px;
+  }
+  .app-main {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+  .control-panel {
+    min-height: auto;
+  }
+  .files-card {
+    height: 350px;
+  }
+}
